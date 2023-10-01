@@ -1,6 +1,6 @@
 package com.analys.controller;
 
-import com.analys.account.AccountUtils;
+import com.analys.account.AccountUtilsEth;
 import com.analys.account.info.AccountDto;
 import com.analys.controller.po.ReqInfo;
 import com.analys.service.TokenService;
@@ -25,7 +25,7 @@ public class TokenController {
     @Autowired
     private TokenService tokenService;
     @Autowired
-    private AccountUtils accountUtils;
+    private AccountUtilsEth accountUtils;
 
 
     /**

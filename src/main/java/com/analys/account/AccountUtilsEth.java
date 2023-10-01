@@ -566,9 +566,9 @@ public class AccountUtilsEth {
                 "0x117dc38dfe7eb7a7f2d852778df871a548c6a5b8",
                 "0xf5b161cc99296c880aa0b4a1495f06ddfd8b45da"
                 );
-        //List<String> list1 = Arrays.asList("0x7a1cbb63419026956efac9260be0e44d96bb0edb");
+        List<String> list1 = Arrays.asList("0xd42b35cb1fc08fa524c4bc566d20741146af432c");
         AccountUtilsEth accountUtils = new AccountUtilsEth();
-        Map<String, Map<Integer, AccountDto>> map = accountUtils.batchSelect(list);
+        Map<String, Map<Integer, AccountDto>> map = accountUtils.batchSelect(list1);
         String string = objectMapper.writeValueAsString(map);
         System.out.println(string);
     }
