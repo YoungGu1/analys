@@ -349,7 +349,7 @@ public class AccountUtilsEth {
         list.forEach(s -> {
             Map<Integer, AccountDto> map1 = analyzingProfit(s);
             //过滤数据
-            if (filter(1, map1) || filter(3, map1) || filter(7, map1)) {
+            if (filter(3, map1) || filter(7, map1)) {
                 map.put(s, map1);
             }
         });
@@ -361,8 +361,19 @@ public class AccountUtilsEth {
 
         AccountDto accountDto = map.get(day);
         String profitRate = accountDto.getProfitRate();
+        Integer totalBuy = accountDto.getTotalBuy();
+        Integer totalSell = accountDto.getTotalSell();
         double rate = Double.parseDouble(profitRate);
-        if (rate >= 1.5) {
+        int i = totalSell / totalBuy;
+
+        //3天7天，买卖次数必须大于1
+        if(day != 1){
+            if(totalBuy <= 1 || totalSell <= 1){
+                return false;
+            }
+        }
+
+        if (rate >= 1.5 && i <= 3) {
             return true;
         }
 
@@ -415,9 +426,9 @@ public class AccountUtilsEth {
                 "0x95b09dfa9e6341ce19a9df99bf7b84dc3fd4d7b5",
                 "0xe3382268800c2892f392741d6442ac9b73542087"
         );
-        List<String> list1 = Arrays.asList("0xfc78848b7e7876abc450ec1d2639e94744d122e5");
+        List<String> list1 = Arrays.asList("0x6e77efcad4db1e016b8105e4e14c353097c4d25c");
         AccountUtilsEth accountUtils = new AccountUtilsEth();
-        Map<String, Map<Integer, AccountDto>> map = accountUtils.batchSelect(list);
+        Map<String, Map<Integer, AccountDto>> map = accountUtils.batchSelect(list1);
         String string = objectMapper.writeValueAsString(map);
         System.out.println(string);
     }
