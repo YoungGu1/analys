@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 @Service
 public class AccountUtilsEth {
 
-    private List<Transaction> send(String address,int num) {
+    private List<Transaction> send(String address, int num) {
 
 
         //headers.setContentType(MediaType.APPLICATION_JSON);
@@ -123,8 +123,8 @@ public class AccountUtilsEth {
 
         //发送请求
         for (int i = 0; i < 10; i++) {
-            List<Transaction> a = send(address,i);
-            if(CollectionUtils.isEmpty(a)){
+            List<Transaction> a = send(address, i);
+            if (CollectionUtils.isEmpty(a)) {
                 break;
             }
             data.addAll(a);
@@ -174,11 +174,9 @@ public class AccountUtilsEth {
         int totalSell30d = 0;
 
         //换成weth地址
-        String[] mainTokens = {
-                "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
-        };
+        String[] mainTokens = {"0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"};
 
-        List<String> listSell = new ArrayList<>();
+        List<String> hashList = new ArrayList<>();
 
         for (Transaction v : data) {
             //if ("erc20".equals(v.getType())) {
@@ -193,6 +191,12 @@ public class AccountUtilsEth {
 
             long timestamp = Long.parseLong(String.valueOf(v.getTimestamp()));
             if ("swap".equals(v.getTransactionType())) {
+
+                //同一个交易已经进行过一次计算
+                if(hashList.contains(tx)){
+                    continue;
+                }
+
                 if (Arrays.asList(mainTokens).contains(v.getFromAddress()) && Arrays.asList(mainTokens).contains(v.getToAddress())) {
                     continue;
                 }
@@ -206,12 +210,9 @@ public class AccountUtilsEth {
                     continue;
                 }
 
-                //long timestamp = Long.parseLong(String.valueOf(v.getTimestamp()));
+                hashList.add(tx);
+
                 if (swapSide == 1) {
-                    if (listSell.contains(tx)) {
-                        continue;
-                    }
-                    listSell.add(tx);
 
                     BigDecimal amountStable = new BigDecimal(v.getAmountStable());
                     if (timestamp >= ts1d) {
@@ -261,8 +262,17 @@ public class AccountUtilsEth {
 
 
             //卖出
-            if ("transfer".equals(v.getTransactionType()) && Objects.equals(v.getFromAddress(), address)) {
+            if ("transfer".equals(v.getTransactionType()) && Objects.equals(v.getFromAddress().toLowerCase(), address.toLowerCase())) {
+                //同一个交易已经进行过一次计算
+                if(hashList.contains(tx)){
+                    continue;
+                }
+                hashList.add(tx);
                 BigDecimal amountStable = new BigDecimal(v.getAmountStable());
+                //过滤掉转给项目方手续费
+                if (amountStable.doubleValue() - 10 < 0) {
+                    continue;
+                }
                 if (timestamp >= ts1d) {
                     income1d = income1d.add(amountStable);
                     totalSell1d++;
@@ -285,6 +295,35 @@ public class AccountUtilsEth {
                 }
             }
 
+            //买入
+            if ("transfer".equals(v.getTransactionType()) && Objects.equals(v.getToAddress().toLowerCase(), address.toLowerCase())) {
+                //同一个交易已经进行过一次计算
+                if(hashList.contains(tx)){
+                    continue;
+                }
+                hashList.add(tx);
+                BigDecimal amountStable = new BigDecimal(v.getAmountStable());
+                if (timestamp >= ts1d) {
+                    outflow1d = outflow1d.add(amountStable);
+                    totalBuy1d++;
+                }
+                if (timestamp >= ts3d) {
+                    outflow3d = outflow3d.add(amountStable);
+                    totalBuy3d++;
+                }
+                if (timestamp >= ts7d) {
+                    outflow7d = outflow7d.add(amountStable);
+                    totalBuy7d++;
+                }
+                if (timestamp >= ts15d) {
+                    outflow15d = outflow15d.add(amountStable);
+                    totalBuy15d++;
+                }
+                if (timestamp >= ts30d) {
+                    outflow30d = outflow30d.add(amountStable);
+                    totalBuy30d++;
+                }
+            }
         }
 
 
@@ -364,14 +403,10 @@ public class AccountUtilsEth {
         Integer totalBuy = accountDto.getTotalBuy();
         Integer totalSell = accountDto.getTotalSell();
         double rate = Double.parseDouble(profitRate);
-        int i = totalSell / totalBuy;
-
-        //3天7天，买卖次数必须大于1
-        if(day != 1){
-            if(totalBuy <= 1 || totalSell <= 1){
-                return false;
-            }
+        if(totalBuy == 0 || totalSell == 0){
+            return false;
         }
+        int i = totalSell / totalBuy;
 
         if (rate >= 1.5 && i <= 3) {
             return true;
@@ -385,50 +420,129 @@ public class AccountUtilsEth {
 
         ObjectMapper objectMapper = new ObjectMapper();
         List<String> list = Arrays.asList(
-                "0x221fce6b6dac61520c1c283825e29bb556979111",
-                "0xb217b5c081afb18b7cb14347128db7fa3ec499d5",
-                "0x31c6d90c9d73f08547ab299c935a8b8a80ebe603",
+                "0x4423cbf50599b4daf01ce290b6a2c2ecca957a38",
+                "0x1eb7ab6f171e53c5d871f78c9a54ecbc77a52356",
+                "0x5e302dc8f41be15ad663e30d64027741556a2b22",
+                "0x75d8ed3a26ed37cfac53fadfdcb5385ff0cea04b",
+                "0x490d9e694967f8d5a0fc5b7080284192f1dbd673",
+                "0xc3fcc310a93aa34d2de86fe0c00f9ebdc395e1d9",
+                "0xc607459b0cc92e1bec3f60d7cbebb80ce7861f93",
+                "0x84ab142e4014bba2499b65a9b0722e0f77a2bc59",
+                "0xf94d633e8f81ef6ec7cd6116a0bf9b4b2f65a24b",
+                "0xa6bcee95d8c4ecf7bfaa819f9f90042c1af81169",
+                "0x4acf260a1c2e72a163996e62d07cfca6cbcfc1a3",
+                "0xafef900b8ae866e2689e804fb794f67b80f21278",
+                "0x0ecc4fd82e3f550b53a746443f289c193108a2fc",
+                "0xe432086607a1b500caa36c95b766d91ff47114c6",
+                "0xa2f893a8d5a72fa3ce8eaf8cb5579ea2d7866320",
+                "0xd633821affc73205f1e7e615fad1d2dc1a996b05",
+                "0xa3c0ec122e5f3d217880f9bfef5698ddb2dd79f1",
+                "0xfc78848b7e7876abc450ec1d2639e94744d122e5",
+                "0x4563f662e66fdac3183e7e0057d49c9db355fdeb",
+                "0x72f9c3debf3508d7cc55beae9f541a78e631e99e",
+                "0xe8288cba3ee3b8706c285c0bc8f13ff3941ddf8d",
+                "0x09ac07ce5e7345a4a1df33405ad54871041e306e",
+                "0xb24c8ef593563e1fff3ba6e8bb3a8b7042beff1f",
+                "0x67054e66a44ef2be3fc349cc08ce62d31e0aae13",
+                "0xaef7569b48d2a7f45bba98ec5616e3715a60d72f",
+                "0x42479fe1c362887da9f67757bac27db17bd76ef8",
+                "0xdcf9aa0f05deddffc1cb699795ca9cd0d9d0ae6f",
+                "0x2e28f281628a784557a9646bd7b5bab27c1e53ff",
+                "0xc479f01c262433848df4be12861ebed8169be5ae",
+                "0x8ea7c218d19babbbb7ae9bb95b604503b3ca5f50",
+                "0x3e9dd8088fe88472621f67ac502b784f0d852b71",
+                "0x298084195200f42ec90385bd71a2db5ff93241de",
+                "0xabf864065fdeb8996eb5469d6c25aae84507d231",
+                "0xfb40b47cefcce911c67243870fbc199a3d9c3017",
+                "0x139b9a8cc66e57a8124eb215afceff0cce16fd1b",
+                "0x999999b2173a81c2b20e202c3d22e0473f6517b6",
+                "0x7fcff11b8f4669a9b5599c2c0230dc6e6b8627fd",
+                "0x8c33a15b3eb3e74500f544257606336cb0553352",
+                "0x004d912c41847c638af23e53c03ac86009b27001",
+                "0xc63d36c03a0609d11a4ce223f09d65d7cd8cf060",
+                "0xb7b0c8f7035dd97efad1e508df4f07c81a8a0eab",
+                "0x09ac07ce5e7345a4a1df33405ad54871041e306e",
+                "0xa6ee0249dd5ccc040115152a9fc5a6c0b9be78e9",
+                "0xc060a089eb849f2d91102fd08c3d40729711efc9",
+                "0x8db443472986834bab2dcdc938ea1e995cbadd45",
+                "0xf8ba2189968d8459a2e48b8cdff8ece030fdc8c6",
+                "0x800d304399ddfbb0a8ef7acc3197dc99f35d8ae6",
+                "0x95bfe21a7651854b32896fa1941525db77b5d302",
+                "0xe572fe384eb21f7242e6f40fcf11b0de6ddf9bf2",
+                "0x7cda0228c95a72089fbdf4183e358fca0abd43fb",
+                "0x86e1d33ad028da2feb61a7138a22a472f383b8b8",
+                "0xafef900b8ae866e2689e804fb794f67b80f21278",
+                "0x5e302dc8f41be15ad663e30d64027741556a2b22",
+                "0x9f682fa41e370a7d58128820b9595a1a7c98a403",
+                "0x8c38a8ab7242896449935346d9bb0f76ce186607",
+                "0x898a742e79a8877960dd5e88f71f44192b895c53",
+                "0xdcf9aa0f05deddffc1cb699795ca9cd0d9d0ae6f",
+                "0xdfda95adf745e904498e522d0ff69c6c303f3341",
+                "0xa49c4d6bf8ab3f21b34432ba91980809ec5d0ed7",
+                "0x088fa1f723c93ab3b67e6ffbb592c878d537ff41",
+                "0xb8fe71a788b4bc22b58d1bcbd5f6099981947757",
+                "0x2f78e09791f45a14b064503ea3b4d5e2357a5ebc",
+                "0xd8c138fddcb0c422c1abf6ebb02e895c6f706590",
+                "0xff45bb02779246a38861468a890d7715136d4ea8",
+                "0xe23f26cab48f1dfb66e8cabfa6cfc47856a98787",
+                "0x68ca69807b9b76610e234bfb5fe2f598c52bbb3d",
+                "0xb2738e9b0f38b604c665329c917f74283f5f87cf",
+                "0x05e47bbdedc57d53a2b969cfe98179560d999999",
+                "0x38d671409156608fe1dd66c2d1ac9936ff973ef3",
+                "0x73a3225e206b236c63c34d828d9324cce7ae20cb",
+                "0x7fcff11b8f4669a9b5599c2c0230dc6e6b8627fd",
+                "0x8c33a15b3eb3e74500f544257606336cb0553352",
+                "0xf1962aab4ecec6f533e9532fd2738945bc623014",
+                "0x50c9359bb284366155b4bb5b88403c96a5f7d2b3",
+                "0x460aab75b5b4e08ca61bd9fe568f762a49b36f71",
+                "0x618012c296f721e3afbfc288aca39c1d341c1ff2",
+                "0x227e37cfe4a9f954d763614417644d31824cceca",
+                "0x298084195200f42ec90385bd71a2db5ff93241de",
+                "0xed0cd32bbfa16abf116819e66a683fbb9f311716",
+                "0xf9c6126651cddd23e8c670170beca3d56cd4f2ce",
+                "0x1bac8fb482d9603947bd39be9ccc601999d9d445",
+                "0x66623b6a48998243fa28b7d6c7d63562885f4e2c",
+                "0x42479fe1c362887da9f67757bac27db17bd76ef8",
+                "0x3e97d87ed20a00f06bd4582de43ffb50c210a6e7",
                 "0x01d8d6f2481ce17d83f19ff23b1dbcb41e6fdc7b",
-                "0xeb002328393201038fc68eba0fb895a4ae17397e",
-                "0xb16e5ece0acda8a113720ff9d6514ebd32fd3038",
-                "0xa7308d4d83b14859916671a17370476e6c6cd1a9",
-                "0x35805dc419ddf64d9cda679839a31b0c114e6122",
-                "0x022a1a15f507ccab6dce31ac56a644f3f3fd3be4",
-                "0xbea3b7eda9e6a9bb0e470e062025f4129412e9f1",
-                "0xa99e96dd0f86a3c7c64a31df7605c5728f77af2c",
-                "0x772f0bb499ad06490f988359b5a1df96ac32b9e2",
-                "0x50f26d9442e9b87856cf1257853a7b142d621960",
-                "0xc0bf08682e29796f27652a26abd98650e374c97d",
-                "0x2db15d5240c157ac5077f7fac18ba84db954bb28",
-                "0x7b69782c0a2c1acb059a77f013980719a77a3da8",
-                "0xf5b90defbc7c9415163dcc4e8623a25b93425e41",
-                "0xe8d3c311912513ae9cc34016db69eae9e9f4e2cc",
-                "0x2b2f4b74adadec7af33230090458610a4a73556e",
-                "0xbb28c484121554663b601783a8effac3a7ab646a",
-                "0x3772a9878c9daea175f7ca1b6f7fbd68d463599e",
-                "0xe29eab306d99aa821da18352611216240adaed00",
-                "0x08a3e1ae33190686835ac6713bc50fc8eee73303",
                 "0x4f204e5b75fe13abd9e656007dbaeae64e07939f",
-                "0x0cdd4a6b9991b651d961c3b5464ab2cab1ac3749",
-                "0x6199a78c6c8f2eb48adb39252d3ac1a48bac5e3b",
-                "0x6bcc7ad891179efcccee3e1e0240b79f24a70a4f",
-                "0x76258e218decb8ae209151dacda5fb56b8ca8f8e",
-                "0x65dbe5ef037efee8f4a39403337ab8fea3a0ae5e",
-                "0xb278c6c11111d6d6f3f7f10f8d19e4124c9ef20e",
-                "0x5b91114ef2814f1f844bf3b08cbcea8bd212a148",
                 "0xe4f4674ad8e915869d9dca32d0e03503fd0a7be1",
-                "0x8c8e23fa04557d9e0b579ea5fe45051e934f147d",
-                "0xca23c3396a56d5f2bf6f566440e777049dd8e2f8",
-                "0xb193d90ca445bc91652aae5f07b50b70efd354b6",
-                "0x181f2be9d59eeda2eddeb7b94492c650be1dc07d",
-                "0x1d49af587f325917b1467600a180a96388b97dff",
-                "0x5db10cad9e5899f8a2f16239c30097e8405f088d",
                 "0x95b09dfa9e6341ce19a9df99bf7b84dc3fd4d7b5",
-                "0xe3382268800c2892f392741d6442ac9b73542087"
+                "0x50f26d9442e9b87856cf1257853a7b142d621960",
+                "0x6199a78c6c8f2eb48adb39252d3ac1a48bac5e3b",
+                "0x221fce6b6dac61520c1c283825e29bb556979111",
+                "0xc0bf08682e29796f27652a26abd98650e374c97d",
+                "0x76258e218decb8ae209151dacda5fb56b8ca8f8e",
+                "0xb193d90ca445bc91652aae5f07b50b70efd354b6",
+                "0x2b2f4b74adadec7af33230090458610a4a73556e",
+                "0x022a1a15f507ccab6dce31ac56a644f3f3fd3be4",
+                "0xa99e96dd0f86a3c7c64a31df7605c5728f77af2c",
+                "0x3772a9878c9daea175f7ca1b6f7fbd68d463599e",
+                "0x65dbe5ef037efee8f4a39403337ab8fea3a0ae5e",
+                "0xf5b90defbc7c9415163dcc4e8623a25b93425e41",
+                "0x08a3e1ae33190686835ac6713bc50fc8eee73303",
+                "0xbea3b7eda9e6a9bb0e470e062025f4129412e9f1",
+                "0x5db10cad9e5899f8a2f16239c30097e8405f088d",
+                "0xe8d3c311912513ae9cc34016db69eae9e9f4e2cc",
+                "0xe3382268800c2892f392741d6442ac9b73542087",
+                "0x7933fa07e2fda700f8dab507599f677e1432b1a6",
+                "0x3f34d22b55194d768cf4b2b41b501bc9daa8f5c3",
+                "0xf6e0bccb72ac3e188d053f4f8c63f5721edf07a2",
+                "0xc3fcc310a93aa34d2de86fe0c00f9ebdc395e1d9",
+                "0xbef60a2d3e2a587e51a9a6d3cefdefd7fa0a7941",
+                "0x0fde666a0f12a7d3bf708e1613834bd3937c3b3e",
+                "0x84ab142e4014bba2499b65a9b0722e0f77a2bc59",
+                "0x8c38026b67962b7b79a96d57a78fb22423d42da5",
+                "0xabf864065fdeb8996eb5469d6c25aae84507d231",
+                "0x893cc3bee790245cc5f9d81c883d2ebe3aaada5d",
+                "0x6ce5f8b91bd7ddf2b1b55b182a8132442e4ead7a",
+                "0x06df1645806ce293b747f0dc249ed674d55090d6",
+                "0x707ea4dda42db173c5bbd89b769c3cc767b42360",
+                "0x728d2bbd21686e51bf790c83092099bcc6d4e839"
         );
         List<String> list1 = Arrays.asList("0x6e77efcad4db1e016b8105e4e14c353097c4d25c");
         AccountUtilsEth accountUtils = new AccountUtilsEth();
-        Map<String, Map<Integer, AccountDto>> map = accountUtils.batchSelect(list1);
+        Map<String, Map<Integer, AccountDto>> map = accountUtils.batchSelect(list);
         String string = objectMapper.writeValueAsString(map);
         System.out.println(string);
     }
