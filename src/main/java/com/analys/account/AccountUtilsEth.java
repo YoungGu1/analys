@@ -387,6 +387,10 @@ public class AccountUtilsEth {
         Map<String, Map<Integer, AccountDto>> map = new HashMap<>();
         list.forEach(s -> {
             Map<Integer, AccountDto> map1 = analyzingProfit(s);
+            if(Objects.isNull(map1)){
+                System.out.println("当前地址没有找到记录" + s);
+                return;
+            }
             //过滤数据
             if (filter(3, map1) || filter(7, map1)) {
                 map.put(s, map1);

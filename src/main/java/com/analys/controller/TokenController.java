@@ -46,10 +46,16 @@ public class TokenController {
 
     @RequestMapping("/getAddressByAddressStr")
     public String getAddressByAddressStr(@RequestBody ReqInfo reqInfo) throws JsonProcessingException {
-        Map<String, Map<Integer, AccountDto>> map = accountUtils.batchSelect(reqInfo.getAddressStr());
-        ObjectMapper objectMapper = new ObjectMapper();
-        String s = objectMapper.writeValueAsString(map);
-        System.out.println(s);
+        System.out.println("开始调用  num ： "+ reqInfo.getAddressStr().size());
+        String s;
+        try {
+            Map<String, Map<Integer, AccountDto>> map = accountUtils.batchSelect(reqInfo.getAddressStr());
+            ObjectMapper objectMapper = new ObjectMapper();
+            s = objectMapper.writeValueAsString(map);
+            System.out.println(s);
+        } finally {
+            System.out.println("---------------------------------------调用结束---------------------------------------");
+        }
         return s;
     }
 
